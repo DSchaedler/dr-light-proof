@@ -9,18 +9,22 @@ def tick(args)
   mouse_y = args.inputs.mouse.y
 
   block = { x: 100, y: 100, w: 100, h: 100 }
+  block2 = { x: 300, y: 300, w: 100, h: 100 }
+  block3 = { x: 600, y: 400, w: 100, h: 100 }
   screen = { x: args.grid.left, y: args.grid.bottom, w: args.grid.w, h: args.grid.h }
 
   lines = []
 
   lines.concat deconstruct_rect_lines(block)
+  lines.concat deconstruct_rect_lines(block2)
+  lines.concat deconstruct_rect_lines(block3)
   lines.concat deconstruct_rect_lines(screen)
 
   rays = []
 
   degree = 0
   num_rays = 360
-  ray_length = 200
+  ray_length = 1280
 
   num_rays.times do
     ray_end = point_at_angle_distance({ x: mouse_x, y: mouse_y }, ray_length, degree)
@@ -29,23 +33,29 @@ def tick(args)
   end
 
   args.outputs.lines << lines
-  args.outputs.lines << rays
 
   intersections = []
 
   rays.each do |ray|
+    this_ray_intersections = []
     lines.each do |line|
       new_intersection = line_intersection(line, ray)
       next unless new_intersection && !new_intersection.nil?
-      new_intersection = new_intersection.merge(w: 10, h: 10, b: 255)
-      new_intersection.x = new_intersection.x - 5
-      new_intersection.y = new_intersection.y - 5
-      intersections << new_intersection
+      new_intersection = new_intersection.merge(w: 10, h: 10, b: 255, distance: args.geometry.distance(new_intersection, {x: mouse_x, y: mouse_y}))
+      this_ray_intersections << new_intersection
     end
+    sorted_points = this_ray_intersections.sort_by { |hsh| hsh[:distance] }
+    intersections << sorted_points[0]
   end
 
-  args.outputs.solids << intersections
+  final_rays = intersections.map do |point|
+    {x: point.x, y: point.y, x2: mouse_x, y2: mouse_y} if point
+  end
+
+  args.outputs.lines << final_rays
   args.outputs.solids << block
+  args.outputs.solids << block2
+  args.outputs.solids << block3
 
   args.outputs.labels << { x: 0, y: args.grid.center_y, text: intersections.length.to_s }
 
